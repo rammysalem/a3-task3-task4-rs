@@ -1,0 +1,96 @@
+---
+title: "a3_task4_Rammy_Salem"
+author: "Rammy Salem"
+date: "11/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# load packages
+library(tidyverse)
+library(janitor)
+library(here)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(lubridate)
+```
+
+```{r}
+sea_urchins <- read_csv(here("data","urchins.csv")) # read urchins data
+```
+
+```{r}
+purple_urchins_naples_jan2010 <- sea_urchins %>% # Start from sea urchins data
+  mutate(DATE = mdy(DATE)) %>% # Convert the date to class “Date”
+  mutate(YEAR = year(DATE)) %>% # Create a new column that only contains the year
+  mutate(MONTH = month(DATE)) %>% # Create a new column that contains the month
+  mutate(site_name = case_when( # Create a new column called site_full that contains the full name for each of the five sites
+    SITE == "NAPL" ~ "Naples Reef",
+    SITE == "AQUE" ~ "Arroyo Quemado Reef",
+    SITE == "CARP" ~ "Carpinteria Reef",
+    SITE == "MOHK" ~ "Mohawk Reef",
+    SITE == "IVEE" ~ "Isla Vista Reef"
+  )) %>%
+  filter(COMMON_NAME == "Purple Urchin", 
+         YEAR == 2010, 
+         MONTH == 1, 
+         site_name == "Naples Reef") # Filtered to only include observations for purple urchins
+```
+
+```{r}
+# Look at and consider histograms and QQ-plots for the size distribution for each of the treatments (Control and Annual) to assess normality. 
+#Histogram
+ggplot(data = purple_urchins_naples_jan2010, aes(x = SIZE)) +
+  geom_histogram(bins = 40) +
+  facet_wrap(~TREATMENT) +
+  labs(x = "Sea urchin diameter (cm), measured to the nearest 0.5 cm",
+       y = "Number of Sea Urchins")
+```
+
+```{r}
+ggplot(data = purple_urchins_naples_jan2010, aes(sample = SIZE)) +
+         geom_qq() + 
+         facet_wrap(~TREATMENT)
+```
+
+### The histograms and Q-Q plots suggest that both samples have a slight positive skew. 
+
+```{r}
+# Create a basic table of descriptive statistics for both groups (including at least the mean, standard deviation, and sample size)
+
+purple_urchins_naples_jan2010_table <- purple_urchins_naples_jan2010 %>% # Start from purple urchins data
+  group_by(TREATMENT) %>% # group by treatment
+  summarize(mean_size = mean(SIZE),# Find mean size
+            median_size = median(SIZE), # Find median size
+            sd_size = sd(SIZE), # Find standard deviation size
+            n = n()) %>% # Find sample size
+  rename("Mean Size" = mean_size,
+         "Median Size" = median_size,
+         "SD" = sd_size) %>% 
+  kbl() %>% # Use kableExtra to make table look nicer
+  kable_styling() 
+  
+#View it
+purple_urchins_naples_jan2010_table
+```
+
+
+```{r}
+# Create vectors containing observations for each sample (TREATMENT)
+annual_sample <- purple_urchins_naples_jan2010 %>% 
+  filter(TREATMENT == "ANNUAL") %>% # filter for only annual treatment
+  pull(SIZE) # create vector of size data
+
+control_sample <- purple_urchins_naples_jan2010 %>%
+  filter(TREATMENT == "CONTROL") %>% # filter only control treatment
+  pull(SIZE) # Create vector of size data
+
+t.test(x = annual_sample, control_sample) # Perform a two-sample t-test to compare means between the two groups
+```
+```
+
+### The results of a two-sample t-test comparing the mean diameters of purple urchins reveal that, on average, the sizes of purple urchins in areas with annual kelp removal (*M* = 3.92, *SD* = .97) are not significantly greater than the sizes of purple urchins in areas in which giant kelp is left intact (*M* = 3.72, *SD* = .87),  *t*(117.66) = 1.15, *p* = .25. On average, purple urchins in areas with annual kelp removal were larger by approximately 0.20 cm (5.4%) than purple urchins in areas with no annual kelp removal, but this difference was not statistically significant. 
+
+### The p-value of approximately .25 means that there is approximately a 25% chance that the two samples came from the same population, and a 25% possibility that the observed differences were due to chance alone as opposed to differences due to the treatment conditions, which is not enough evidence to reject the null hypothesis that the two samples are from the same population based on the the generally accepted below 5% *p*-value significance threshold.

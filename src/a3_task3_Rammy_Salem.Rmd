@@ -1,0 +1,131 @@
+---
+title: "Sea Urchins"
+author: "Rammy Salem"
+date: "11/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# load packages
+library(tidyverse)
+library(janitor)
+library(here)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(lubridate)
+```
+
+```{r}
+# read csv file
+sea_urchins <- read_csv(here("data","urchins.csv"))
+```
+
+
+```{r}
+# compare the distribution of sizes between purple and red urchins using histogram
+ggplot(data = sea_urchins, aes(x = SIZE)) +
+  geom_histogram() +
+  facet_wrap(~COMMON_NAME) +
+  labs(x = "Urchin diameter (cm), measured to the nearest 0.5 cm",
+       y = "Number of Sea Urchins")
+```
+
+```{r}
+# compare the distribution of sizes between purple and red urchins using box plot
+ggplot(data = sea_urchins, aes(x = COMMON_NAME,
+                               y = SIZE)) +
+  geom_boxplot() +
+  labs(x = "Sea urchin common name",
+       y = "Urchin diameter (cm), measured to the 
+       nearest 0.5 cm")
+```
+
+```{r}
+# Create a summary table that contains the mean, median, standard deviation, and sample size for red and purple urchins
+sea_urchins_table <- sea_urchins %>% # Start from sea urchins data
+  group_by(COMMON_NAME) %>% # group by common name
+  summarize(mean_size = mean(SIZE),# Find mean size
+            median_size = median(SIZE), # Find median size
+            sd_size = sd(SIZE), # Find standard deviation size
+            n = n()) %>% # Find sample size
+  rename("Common Name" = COMMON_NAME, # Rename columns for table
+         "Mean Size" = mean_size,
+         "Median Size" = median_size,
+         "SD" = sd_size) %>% 
+  kbl() %>% # Use kableExtra to make table look nicer
+  kable_styling()  
+
+# View it
+sea_urchins_table
+```
+
+### The distribution of purple urchins appears to be slightly positive, while the distribution of red urchins appears to be normal. There is greater variability in red urchin sizes and more outliers. On average, red urchins are approximately 2.3 cm (51.6%) larger than purple urchins. 
+
+```{r}
+purple_urchins <- sea_urchins %>% # Start from sea urchins data
+  filter(COMMON_NAME == "Purple Urchin") %>% # Filtered to only include observations for purple urchins
+  mutate(DATE = mdy(DATE)) %>% # Convert the date to class “Date”
+  mutate(YEAR = year(DATE)) %>% # Create a new column that only contains the year
+  mutate(site_full = case_when( # Create a new column called site_full that contains the full name for each of the five sites
+    SITE == "NAPL" ~ "Naples Reef",
+    SITE == "AQUE" ~ "Arroyo Quemado Reef",
+    SITE == "CARP" ~ "Carpinteria Reef",
+    SITE == "MOHK" ~ "Mohawk Reef",
+    SITE == "IVEE" ~ "Isla Vista Reef"
+  ))
+```
+
+```{r}
+# Make a summary table containing the total number of purple urchins observed by site and year, starting from purple_urchins created above and using the count() function to find counts of observations by group.
+purple_urchins_table <- purple_urchins %>% # Start from purple urchins data
+  group_by(site_full, YEAR) %>% # Group by site and year
+  count(site_full, YEAR) # Count observations by group
+
+# View it
+purple_urchins_table
+```
+
+```{r}
+# Make an exploratory graph of counts of purple urchins recorded at each site over time for the years included in the study. 
+# As faceted histogram
+ggplot(data = purple_urchins, aes(x = YEAR)) + # select x-axis variable
+  geom_histogram(bins = 25) + # Selected number of bins
+  facet_wrap(~site_full) + # facet wrapped by site
+  labs(x = "Year", # Added x- and y-axis labels
+       y = "Number of Sea Urchins")
+```
+
+```{r}
+# As stacked bar graph
+ggplot(data = purple_urchins_table, aes(x = YEAR, # Select x-axis variable
+                                        fill = site_full, # Select bar fill
+                                        y = n)) + # Select y-axis variable
+       geom_bar(stat = "identity") + # Create stacked bar graph
+       labs(y = "Number of Sea Urchins", fill = "Site") # add labels
+```
+
+```{r}
+# As faceted line graph
+ggplot (data = purple_urchins_table, aes(x = YEAR, # Select x-axis variable
+                                         y = n)) + # Select y-axis variable
+  geom_line() + # create line graph
+  scale_x_continuous(name="Year", # Add x-axis label
+                                   breaks = seq(2008,2020,2), # specify breaks
+                                   limits=c(2008, 2020)) + # specify limits
+  labs(y = "Number of Sea Urchins") + # Add y-axis label
+  facet_wrap(~site_full) # facet wrap
+```
+
+```{r}
+# As combined line graph
+ggplot (data = purple_urchins_table, aes(x = YEAR, # select x-axis variable
+                                         y = n)) + # Select y-axis variable
+  geom_line(aes(color = site_full)) + # select line color variable
+  scale_x_continuous(name="Year", # Add x-axis label
+                     breaks = seq(2008,2020,1), # specify breaks
+                     limits=c(2008, 2020)) + # specify limits
+  labs(y = "Number of Sea Urchins", color = "Site") # add labels
+```
+
